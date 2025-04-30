@@ -31,5 +31,5 @@ LOG_FOLDER = MAIN_FOLDER / "logs"
 LOG_FOLDER.mkdir(exist_ok=True, parents=True)
 
 TEMPERATURE_API_ADDRESS = os.getenv(
-    "TEMPERATURE_API_ADDRESS", default="http://127.0.0.1:5001/api"
+    "TEMPERATURE_API_ADDRESS", default="http://127.0.0.1:4001/api"
 )
