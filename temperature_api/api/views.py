@@ -3,11 +3,11 @@
 import csv
 from datetime import datetime
 
-from flask import Flask, Response, abort, jsonify
+from flask import Blueprint, Response, abort, jsonify
 
 from constants import DATA_DIR
 
-app = Flask(__name__)
+api = Blueprint("simple_page", __name__, template_folder="templates")
 
 
 def get_available_streams():
@@ -52,7 +52,7 @@ def get_data_from_stream(stream, start_datetime, end_datetime):
     return data
 
 
-@app.route("/api/streams")
+@api.route("/streams")
 def available_streams():
     """
     Returns a list of all the streams from which data can be requested.
@@ -60,7 +60,7 @@ def available_streams():
     return jsonify(get_available_streams())
 
 
-@app.route("/api/stream/<stream>/<start_datetime>/<end_datetime>")
+@api.route("/stream/<stream>/<start_datetime>/<end_datetime>")
 def data_for_stream(stream, start_datetime, end_datetime):
     """
     Returns all data for the requested stream between the start and end datetimes, inclusive.
@@ -81,7 +81,3 @@ def data_for_stream(stream, start_datetime, end_datetime):
         )
 
     return jsonify(get_data_from_stream(stream, start_datetime, end_datetime))
-
-
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5001, debug=True)
