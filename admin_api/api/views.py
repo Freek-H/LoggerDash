@@ -29,7 +29,7 @@ def git_pull():
             ]
         )
     elif os_name == "Linux":
-        os.system(f'echo -e $"$(date -Iseconds)\n$(git pull)" >> {log_file_path}')
+        os.system(f'echo "$(date -Iseconds)\n$(git pull)" >> {log_file_path}')
     else:
         raise OSError("Unexpected Operating System")
 
