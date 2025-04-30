@@ -12,7 +12,7 @@ os_name = platform.system()
 if os_name == "Windows":
     DATA_DIR = MAIN_FOLDER / "data"
 elif os_name == "Linux":
-    DATA_DIR = Path("~/scripts/prod/logs")
+    DATA_DIR = Path("~/scripts/prod/logs").expanduser()
 else:
     raise OSError("Unexpected Operating System")
 
