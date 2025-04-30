@@ -6,7 +6,7 @@ import os
 import platform
 import subprocess
 
-from flask import Blueprint
+from flask import Blueprint, Response
 
 from constants import LOG_FOLDER, MAIN_FOLDER
 
@@ -33,4 +33,4 @@ def git_pull():
     else:
         raise OSError("Unexpected Operating System")
 
-    return open(log_file_path, encoding="utf-8").read()
+    return Response(open(log_file_path, encoding="utf-8").read(), mimetype="text/plain")
