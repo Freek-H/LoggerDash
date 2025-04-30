@@ -17,3 +17,6 @@ else:
     raise OSError("Unexpected Operating System")
 
 DATA_DIR.mkdir(exist_ok=True, parents=True)
+
+LOG_FOLDER = MAIN_FOLDER / "logs"
+LOG_FOLDER.mkdir(exist_ok=True, parents=True)
