@@ -17,24 +17,14 @@ def get_available_streams():
     return [item.name for item in DATA_DIR.iterdir() if item.is_dir()]
 
 
-def get_data_from_stream(stream, start_datetime, end_datetime):
+def get_data_from_stream(pagination, requested_page):
     """
     Returns a dictionary of lists containing all the present raw data for the requested stream
      between the start and end datetimes, inclusive.
     """
-    file_paths = []
-    for file_path in (DATA_DIR / stream).glob("*.csv"):
-        file_datetime = datetime.fromisoformat(
-            file_path.name.removesuffix(file_path.suffix)
-            .removeprefix(f"{stream}_")
-            .replace(".", ":")
-        )
-        if (
-            start_datetime.replace(minute=0, second=0, microsecond=0)
-            <= file_datetime
-            <= end_datetime.replace(minute=0, second=0, microsecond=0)
-        ):
-            file_paths.append(file_path)
+
+    # TODO: get the requested page from the pagination object, or if no page is given, return the first page.
+    file_paths = pagination.get_page_file_paths(requested_page)
     data = {}
     for file_path in file_paths:
         with open(file_path, encoding="utf-8") as file:
@@ -53,11 +43,13 @@ def get_data_from_stream(stream, start_datetime, end_datetime):
 
 
 @api.route("/streams", methods=["GET", "POST"])
-def available_streams():
+def streams():
     """
     GET: Returns a list of all the streams from which data can be requested.
-    POST: Returns all data for the selected stream between the start and end datetimes (inclusive)
-     with the specified granularity.
+    POST: Returns JSON containing:
+     - the first page of data for the selected stream between the start and end datetimes (inclusive);
+     - the JSON object to request next page;
+     - metadata.
 
     Expected application/json:
     {
@@ -100,4 +92,4 @@ def available_streams():
         )
 
     print(data)
-    return jsonify(get_data_from_stream(stream, start_datetime, end_datetime))
+    return jsonify(get_data_from_stream(pagination))
