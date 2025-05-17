@@ -18,28 +18,9 @@ def get_available_streams():
 
 
 def get_data_from_stream(pagination, requested_page):
-    """
-    Returns a dictionary of lists containing all the present raw data for the requested stream
-     between the start and end datetimes, inclusive.
-    """
 
     # TODO: get the requested page from the pagination object, or if no page is given, return the first page.
-    file_paths = pagination.get_page_file_paths(requested_page)
-    data = {}
-    for file_path in file_paths:
-        with open(file_path, encoding="utf-8") as file:
-            reader = csv.DictReader(file)
-            for row in reader:
-                if (
-                    start_datetime
-                    <= datetime.fromisoformat(row["Datetime"])
-                    <= end_datetime
-                ):
-                    for key, value in row.items():
-                        if key not in data:
-                            data[key] = []
-                        data[key].append(value)
-    return data
+    return pagination.get_data(requested_page)
 
 
 @api.route("/streams", methods=["GET", "POST"])
@@ -65,6 +46,11 @@ def streams():
         return jsonify(get_available_streams())
 
     data = request.get_json()
+
+    pagination_id = data.get("paginationId")
+    if pagination_id is not None:
+        return load_pagination(pagination_id).get_data()
+
     stream = data.get("stream")
     if stream is None:
         return abort(Response("Missing key: stream", 400))
