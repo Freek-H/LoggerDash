@@ -1,11 +1,11 @@
 """API exposing temperature logging data"""
 
-import csv
 from datetime import datetime
 
 from flask import Blueprint, Response, abort, jsonify, request
 
 from constants import DATA_DIR
+from temperature_api.api.pagination import Pagination, load_pagination
 
 api = Blueprint("simple_page", __name__, template_folder="templates")
 
@@ -17,18 +17,13 @@ def get_available_streams():
     return [item.name for item in DATA_DIR.iterdir() if item.is_dir()]
 
 
-def get_data_from_stream(pagination, requested_page):
-
-    # TODO: get the requested page from the pagination object, or if no page is given, return the first page.
-    return pagination.get_data(requested_page)
-
-
 @api.route("/streams", methods=["GET", "POST"])
 def streams():
     """
     GET: Returns a list of all the streams from which data can be requested.
     POST: Returns JSON containing:
-     - the first page of data for the selected stream between the start and end datetimes (inclusive);
+     - the first page of data for the selected stream between the start and end datetimes
+        (inclusive);
      - the JSON object to request next page;
      - metadata.
 
@@ -40,8 +35,17 @@ def streams():
         // Optional, default "1900-01-01T00:00:00", has to be in isoformat
         "datetimeEnd": datetime,
         // Optional, default "2999-01-01T00:00:00", has to be in isoformat
+        "minimumItemsPerPage": int,
+        // Optional, default 10_000
+        "pagination_id": UUIDv7,
+        // Optional, used in pagination, will be part of the response if more data is requested
+        //  than fits on one page.
+        "page": int,
+        // Optional, used in pagination, will be part of the response if more data is requested
+        //  than fits on one page.
     }
     """
+    # TODO: response to error messages returned from pagination class
     if request.method == "GET":
         return jsonify(get_available_streams())
 
@@ -49,7 +53,11 @@ def streams():
 
     pagination_id = data.get("paginationId")
     if pagination_id is not None:
-        return load_pagination(pagination_id).get_data()
+        try:
+            page_number = int(data.get("page", 0))
+        except ValueError:
+            return abort(Response(f"Invalid key: {data.get('page')}", 400))
+        pagination = load_pagination(pagination_id).get_data(page_number)
 
     stream = data.get("stream")
     if stream is None:
@@ -77,5 +85,13 @@ def streams():
             )
         )
 
+    minimum_items_per_page = data.get("minimumItemsPerPage", 10_000)
+    pagination = Pagination(
+        stream=stream,
+        start_datetime=start_datetime,
+        end_datetime=end_datetime,
+        minimum_items_per_page=minimum_items_per_page,
+    )
+
     print(data)
-    return jsonify(get_data_from_stream(pagination))
+    return jsonify(pagination.get_data(requested_page=page_number))
