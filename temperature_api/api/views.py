@@ -45,19 +45,25 @@ def streams():
         //  than fits on one page.
     }
     """
-    # TODO: response to error messages returned from pagination class
     if request.method == "GET":
         return jsonify(get_available_streams())
 
     data = request.get_json()
 
+    try:
+        page_number = int(data.get("page", 0))
+    except ValueError:
+        return abort(Response(f"Invalid value for page: {data.get('page')}", 400))
+
     pagination_id = data.get("paginationId")
     if pagination_id is not None:
-        try:
-            page_number = int(data.get("page", 0))
-        except ValueError:
-            return abort(Response(f"Invalid key: {data.get('page')}", 400))
-        pagination = load_pagination(pagination_id).get_data(page_number)
+        pagination = load_pagination(pagination_id)
+        if not isinstance(pagination, Pagination):
+            return abort(Response(pagination["message"], 404))
+        pageinated_data = pagination.get_data(requested_page=page_number)
+        if "message" in pageinated_data:
+            return abort(Response(pageinated_data["message"], 400))
+        return pageinated_data
 
     stream = data.get("stream")
     if stream is None:
@@ -94,4 +100,7 @@ def streams():
     )
 
     print(data)
+    pageinated_data = pagination.get_data(requested_page=page_number)
+    if "message" in pageinated_data:
+        return abort(Response(pageinated_data["message"], 400))
     return jsonify(pagination.get_data(requested_page=page_number))
