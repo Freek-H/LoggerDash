@@ -25,10 +25,17 @@ def git_pull():
         subprocess.call(
             [
                 "C:\\WINDOWS\\system32\\WindowsPowerShell\\v1.0\\powershell.exe",
+                f"cd {MAIN_FOLDER.absolute()}",
+            ]
+        )
+        subprocess.call(
+            [
+                "C:\\WINDOWS\\system32\\WindowsPowerShell\\v1.0\\powershell.exe",
                 f'(Get-Date -Format s) + "`n" + (git pull) | Add-Content "{log_file_path.relative_to(MAIN_FOLDER)}"',
             ]
         )
     elif os_name == "Linux":
+        os.system(f"cd {MAIN_FOLDER.absolute()}")
         os.system(f'echo "$(date -Iseconds)\n$(git pull)" >> {log_file_path}')
     else:
         raise OSError("Unexpected Operating System")
