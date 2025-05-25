@@ -1,11 +1,11 @@
 """API exposing temperature logging data"""
 
-import csv
 from datetime import datetime
 
 from flask import Blueprint, Response, abort, jsonify, request
 
 from constants import DATA_DIR
+from temperature_api.api.pagination import Pagination, load_pagination
 
 api = Blueprint("simple_page", __name__, template_folder="templates")
 
@@ -17,47 +17,15 @@ def get_available_streams():
     return [item.name for item in DATA_DIR.iterdir() if item.is_dir()]
 
 
-def get_data_from_stream(stream, start_datetime, end_datetime):
-    """
-    Returns a dictionary of lists containing all the present raw data for the requested stream
-     between the start and end datetimes, inclusive.
-    """
-    file_paths = []
-    for file_path in (DATA_DIR / stream).glob("*.csv"):
-        file_datetime = datetime.fromisoformat(
-            file_path.name.removesuffix(file_path.suffix)
-            .removeprefix(f"{stream}_")
-            .replace(".", ":")
-        )
-        if (
-            start_datetime.replace(minute=0, second=0, microsecond=0)
-            <= file_datetime
-            <= end_datetime.replace(minute=0, second=0, microsecond=0)
-        ):
-            file_paths.append(file_path)
-    data = {}
-    for file_path in file_paths:
-        with open(file_path, encoding="utf-8") as file:
-            reader = csv.DictReader(file)
-            for row in reader:
-                if (
-                    start_datetime
-                    <= datetime.fromisoformat(row["Datetime"])
-                    <= end_datetime
-                ):
-                    for key, value in row.items():
-                        if key not in data:
-                            data[key] = []
-                        data[key].append(value)
-    return data
-
-
 @api.route("/streams", methods=["GET", "POST"])
-def available_streams():
+def streams():
     """
     GET: Returns a list of all the streams from which data can be requested.
-    POST: Returns all data for the selected stream between the start and end datetimes (inclusive)
-     with the specified granularity.
+    POST: Returns JSON containing:
+     - the first page of data for the selected stream between the start and end datetimes
+        (inclusive);
+     - the JSON object to request next page;
+     - metadata.
 
     Expected application/json:
     {
@@ -67,12 +35,36 @@ def available_streams():
         // Optional, default "1900-01-01T00:00:00", has to be in isoformat
         "datetimeEnd": datetime,
         // Optional, default "2999-01-01T00:00:00", has to be in isoformat
+        "minimumItemsPerPage": int,
+        // Optional, default 10_000
+        "pagination_id": UUIDv7,
+        // Optional, used in pagination, will be part of the response if more data is requested
+        //  than fits on one page.
+        "page": int,
+        // Optional, used in pagination, will be part of the response if more data is requested
+        //  than fits on one page.
     }
     """
     if request.method == "GET":
         return jsonify(get_available_streams())
 
     data = request.get_json()
+
+    try:
+        page_number = int(data.get("page", 0))
+    except ValueError:
+        return abort(Response(f"Invalid value for page: {data.get('page')}", 400))
+
+    pagination_id = data.get("paginationId")
+    if pagination_id is not None:
+        pagination = load_pagination(pagination_id)
+        if not isinstance(pagination, Pagination):
+            return abort(Response(pagination["message"], 404))
+        pageinated_data = pagination.get_data(requested_page=page_number)
+        if "message" in pageinated_data:
+            return abort(Response(pageinated_data["message"], 400))
+        return pageinated_data
+
     stream = data.get("stream")
     if stream is None:
         return abort(Response("Missing key: stream", 400))
@@ -99,5 +91,16 @@ def available_streams():
             )
         )
 
+    minimum_items_per_page = data.get("minimumItemsPerPage", 10_000)
+    pagination = Pagination(
+        stream=stream,
+        start_datetime=start_datetime,
+        end_datetime=end_datetime,
+        minimum_items_per_page=minimum_items_per_page,
+    )
+
     print(data)
-    return jsonify(get_data_from_stream(stream, start_datetime, end_datetime))
+    pageinated_data = pagination.get_data(requested_page=page_number)
+    if "message" in pageinated_data:
+        return abort(Response(pageinated_data["message"], 400))
+    return jsonify(pagination.get_data(requested_page=page_number))

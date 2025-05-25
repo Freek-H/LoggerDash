@@ -3,11 +3,30 @@ Functions as a central location to load constants from such as paths to director
  values that are globally configured, and secrets loaded from environment.
 """
 
+import datetime
 import os
 import platform
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 from dotenv import load_dotenv
+
+
+def datetime_now_local() -> datetime.datetime:
+    """
+    Returns a string of the current datetime in the current timezone that is safe to be used in
+     Windows file names.
+    """
+    return datetime.datetime.now(ZoneInfo("Europe/Amsterdam"))
+
+
+def datetime_now_local_str() -> str:
+    """
+    Returns a string of the current datetime in the current timezone that is safe to be used in
+     Windows file names.
+    """
+    return datetime_now_local().replace(microsecond=0).isoformat().replace(":", ".")
+
 
 MAIN_FOLDER = Path(__file__).parent
 load_dotenv(MAIN_FOLDER / ".env")

@@ -6,6 +6,11 @@ streams/
 # Secrets
 *.env
 
+# Development test files
+test.html
+test.py
+test.sqlite3
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
