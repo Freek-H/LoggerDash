@@ -1,4 +1,4 @@
-from datetime import datetime, timedelta
+import datetime
 
 import matplotlib
 import matplotlib.pyplot as plt
@@ -23,19 +23,32 @@ def root():
     return_ = []
     image_path = IMAGES_FOLDER / "test.png"
     for stream in response.json():
-        response = requests.get(
+        body = {
+                "stream": stream,
+                "datetimeStart": (datetime.datetime.utcnow() - datetime.timedelta(hours=1)).isoformat(),
+                #"datetimeEnd": datetime.utcnow().isoformat(),
+                "minimumItemsPerPage": 1_000_000
+            }
+        print(body)
+        response = requests.post(
             TEMPERATURE_API_ADDRESS
-            + f"/stream/{stream}/{datetime.utcnow() - timedelta(minutes=5)}/{datetime.utcnow()}",
-            timeout=10,
+            + "/streams", json=body,
+            timeout=30,
         )
-        data = response.json()
+        try:
+            r_json = response.json()
+        except requests.exceptions.JSONDecodeError:
+            print(response.content.decode())
+            continue
+        print(r_json["metadata"])
+        data = r_json["data"]
         print(data.keys())
         return_.append(data)
         for key in data.keys():
             if key != "Datetime":
                 plt.plot(
                     [
-                        datetime.fromisoformat(datetime_)
+                        datetime.datetime.fromisoformat(datetime_)
                         for datetime_ in data["Datetime"]
                     ],
                     [float(value) for value in data[key]],
