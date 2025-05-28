@@ -8,8 +8,8 @@ streams/
 
 # Development test files
 test.html
-test.py
-test.sqlite3
+test*.py
+*.sqlite3
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
