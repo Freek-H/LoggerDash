@@ -9,6 +9,10 @@ from temperature_api.api.pagination import Pagination, load_pagination
 
 api = Blueprint("simple_page", __name__, template_folder="templates")
 
+# TODO: Endpoint/other way to request max number of pages expected for a stream?
+# TODO: Bug where if the end datetime is set to a whole hour an empty last page is generated.
+# TODO: Serve data sorted by filename. DONE
+
 
 def get_available_streams():
     """

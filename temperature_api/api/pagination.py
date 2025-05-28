@@ -160,7 +160,7 @@ class Pagination:
                 <= end_datetime.replace(minute=0, second=0, microsecond=0)
             ):
                 file_paths.append(file_path)
-        return file_paths
+        return sorted(file_paths)
 
     def get_file_paths_for_page(self, requested_page=0) -> Union[dict, List[Path]]:
         """
