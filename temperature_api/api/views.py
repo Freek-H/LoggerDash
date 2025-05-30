@@ -35,9 +35,9 @@ def streams():
     {
         "stream": string,
         // Mandatory, allowed values can be requested with GET method
-        "datetimeStart": datetime,
+        "startDatetime": datetime,
         // Optional, default "1900-01-01T00:00:00", has to be in isoformat
-        "datetimeEnd": datetime,
+        "endDatetime": datetime,
         // Optional, default "2999-01-01T00:00:00", has to be in isoformat
         "minimumItemsPerPage": int,
         // Optional, default 10_000
@@ -75,7 +75,7 @@ def streams():
     if stream not in get_available_streams():
         return abort(Response("Invalid stream", 400))
 
-    start_datetime = data.get("datetimeStart", "1900-01-01T00:00:00")
+    start_datetime = data.get("startDatetime", "1900-01-01T00:00:00")
     try:
         start_datetime = datetime.fromisoformat(start_datetime)
     except ValueError:
@@ -85,13 +85,23 @@ def streams():
             )
         )
 
-    end_datetime = data.get("datetimeEnd", "2999-01-01T00:00:00")
+    end_datetime = data.get("endDatetime", "2999-01-01T00:00:00")
     try:
         end_datetime = datetime.fromisoformat(end_datetime)
     except ValueError:
         return abort(
             Response(
                 "Invalid end datetime, please use isoformat date or datetime.", 400
+            )
+        )
+
+    if end_datetime <= start_datetime:
+        return abort(
+            Response(
+                f"Invalid datetime range startDatetime={start_datetime.isoformat()} \
+endDatetime={end_datetime.isoformat()}\n\
+Please enter a valid datetime range with an endDatetime after the startDatetime",
+                400,
             )
         )
 

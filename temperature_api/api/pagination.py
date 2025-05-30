@@ -42,14 +42,16 @@ class Pagination:
             return
         self.id = str(uuid6.uuid7())
         self.expires = datetime_now_local() + datetime.timedelta(hours=1)
-        self.data = [
-            {"path": path, "page": None}
-            for path in self.get_all_file_paths(stream, start_datetime, end_datetime)
-        ]
         self.stream = stream
         self.start_datetime = start_datetime
         self.end_datetime = end_datetime
         self.minimum_items_per_page = minimum_items_per_page
+        all_file_paths = self.get_all_file_paths()
+        self.data = (
+            [{"path": path, "page": None} for path in all_file_paths]
+            if all_file_paths
+            else []
+        )
 
     def to_dict(self) -> dict:
         """
@@ -142,25 +144,47 @@ class Pagination:
         """
         return self.expires < datetime_now_local()
 
-    def get_all_file_paths(self, stream, start_datetime, end_datetime) -> List[Path]:
+    def get_all_file_paths(self) -> List[Path]:
         """
         Get all files for the selected stream that are timestamped in between the start and end
          datetimes.
         """
-        file_paths = []
-        for file_path in (DATA_DIR / stream).glob("*.csv"):
-            file_datetime = datetime.datetime.fromisoformat(
+
+        def file_datetime_from_file_path(file_path):
+            return datetime.datetime.fromisoformat(
                 file_path.name.removesuffix(file_path.suffix)
-                .removeprefix(f"{stream}_")
+                .removeprefix(f"{self.stream}_")
                 .replace(".", ":")
             )
+
+        file_paths = []
+        for file_path in (DATA_DIR / self.stream).glob("*.csv"):
+            file_datetime = file_datetime_from_file_path(file_path)
             if (
-                start_datetime.replace(minute=0, second=0, microsecond=0)
+                self.start_datetime.replace(minute=0, second=0, microsecond=0)
                 <= file_datetime
-                <= end_datetime.replace(minute=0, second=0, microsecond=0)
+                <= self.end_datetime.replace(minute=0, second=0, microsecond=0)
             ):
                 file_paths.append(file_path)
-        return sorted(file_paths)
+
+        file_paths = sorted(file_paths, key=file_datetime_from_file_path)
+        # Here we check if the last file, whether it actually has a row of data for us that we can
+        #  return to the user.
+        with open(file_paths[-1], encoding="utf-8") as file:
+            reader = csv.DictReader(file)
+            # We don't expect to ever not get a row back, as files should never be empty/only have
+            #  a header, but this excepts that case.
+            try:
+                row = next(reader)
+            except StopIteration:
+                row = None
+            if row is None or not (
+                self.start_datetime
+                <= datetime.datetime.fromisoformat(row["Datetime"])
+                <= self.end_datetime
+            ):
+                file_paths.pop()
+        return file_paths
 
     def get_file_paths_for_page(self, requested_page=0) -> Union[dict, List[Path]]:
         """
@@ -200,6 +224,11 @@ pages available ({max(available_page_numbers)})."
         between the start and end datetimes, inclusive, for the requested page.
         If no page is specified, the first one is returned.
         """
+        if not self.data:
+            return {
+                "message": f"No valid files found for stream={self.stream} and datetime range of \
+{self.start_datetime.isoformat()} to {self.end_datetime.isoformat()}"
+            }
         if self.is_expired():
             example_data = json.dumps(
                 {
