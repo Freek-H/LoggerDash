@@ -24,15 +24,17 @@ def root():
     image_path = IMAGES_FOLDER / "test.png"
     for stream in response.json():
         body = {
-                "stream": stream,
-                "datetimeStart": (datetime.datetime.utcnow() - datetime.timedelta(hours=1)).isoformat(),
-                #"datetimeEnd": datetime.utcnow().isoformat(),
-                "minimumItemsPerPage": 1_000_000
-            }
+            "stream": stream,
+            "startDatetime": (
+                datetime.datetime.utcnow() - datetime.timedelta(hours=1)
+            ).isoformat(),
+            # "endDatetime": datetime.utcnow().isoformat(),
+            "minimumItemsPerPage": 1_000_000,
+        }
         print(body)
         response = requests.post(
-            TEMPERATURE_API_ADDRESS
-            + "/streams", json=body,
+            TEMPERATURE_API_ADDRESS + "/streams",
+            json=body,
             timeout=30,
         )
         try:
